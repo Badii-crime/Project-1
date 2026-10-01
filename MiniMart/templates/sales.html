@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Sales - MiniMart{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Sales (Point of Sale)</h1>
+        <p>Search for a product, add it to the cart, and complete the sale.</p>
+    </div>
+</div>
+
+<div class="pos-grid">
+    <div>
+        <div class="filter-bar">
+            <input type="text" id="posSearch" placeholder="Search product by name or ID...">
+        </div>
+        <div class="pos-search-results" id="posResults">
+            <div class="empty-state">Start typing to search for products.</div>
+        </div>
+    </div>
+
+    <div class="cart-card">
+        <h3>Cart</h3>
+        <div id="cartItems">
+            <div class="empty-state" id="cartEmptyState">Your cart is empty.</div>
+        </div>
+        <div class="cart-total">
+            <span>TOTAL</span>
+            <span>₱<span id="cartTotal">0.00</span></span>
+        </div>
+        <button class="btn btn-primary btn-block" id="checkoutBtn" disabled>Complete Sale</button>
+        <div id="checkoutMessage" style="margin-top:10px;"></div>
+    </div>
+</div>
+
+<!-- Success modal -->
+<div class="modal-overlay" id="successModal">
+    <div class="modal-box">
+        <h3>Sale Completed!</h3>
+        <p class="text-muted" id="successModalText"></p>
+        <div class="modal-actions">
+            <button class="btn btn-primary" onclick="closeSuccessModal()">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let cart = []; // { id, product_id, name, price, stock, quantity }
+
+    const posSearch = document.getElementById('posSearch');
+    const posResults = document.getElementById('posResults');
+    const cartItemsBox = document.getElementById('cartItems');
+    const cartTotalEl = document.getElementById('cartTotal');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const checkoutMessage = document.getElementById('checkoutMessage');
+
+    let searchTimeout = null;
+    posSearch.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        const q = posSearch.value.trim();
+        searchTimeout = setTimeout(() => runSearch(q), 250);
+    });
+
+    function runSearch(q) {
+        fetch('/api/products/search?q=' + encodeURIComponent(q))
+            .then(res => res.json())
+            .then(products => renderResults(products))
+            .catch(() => {
+                posResults.innerHTML = '<div class="empty-state">Could not load products.</div>';
+            });
+    }
+
+    // Load an initial set of products on page load
+    runSearch('');
+
+    function renderResults(products) {
+        if (!products.length) {
+            posResults.innerHTML = '<div class="empty-state">No products found.</div>';
+            return;
+        }
+        posResults.innerHTML = products.map(p => `
+            <div class="pos-product-card" onclick='addToCart(${JSON.stringify(p)})'>
+                ${p.image_filename
+                    ? `<img src="/static/uploads/${p.image_filename}" alt="${p.name}">`
+                    : `<img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='90'%3E%3Crect width='100%25' height='100%25' fill='%23f2f4f3'/%3E%3C/svg%3E" alt="">`
+                }
+                <div class="name">${p.name}</div>
+                <div class="price">₱${p.price.toFixed(2)}</div>
+                <div class="stock">Stock: ${p.stock}</div>
+            </div>
+        `).join('');
+    }
+
+    function addToCart(product) {
+        const existing = cart.find(item => item.id === product.id);
+        if (existing) {
+            if (existing.quantity < product.stock) {
+                existing.quantity += 1;
+            }
+        } else {
+            cart.push({
+                id: product.id,
+                product_id: product.product_id,
+                name: product.name,
+                price: product.price,
+                stock: product.stock,
+                quantity: 1
+            });
+        }
+        renderCart();
+    }
+
+    function changeQty(id, delta) {
+        const item = cart.find(i => i.id === id);
+        if (!item) return;
+        item.quantity += delta;
+        if (item.quantity <= 0) {
+            cart = cart.filter(i => i.id !== id);
+        } else if (item.quantity > item.stock) {
+            item.quantity = item.stock;
+        }
+        renderCart();
+    }
+
+    function removeFromCart(id) {
+        cart = cart.filter(i => i.id !== id);
+        renderCart();
+    }
+
+    function renderCart() {
+        if (!cart.length) {
+            cartItemsBox.innerHTML = '<div class="empty-state" id="cartEmptyState">Your cart is empty.</div>';
+            checkoutBtn.disabled = true;
+            cartTotalEl.innerText = '0.00';
+            return;
+        }
+
+        let total = 0;
+        cartItemsBox.innerHTML = cart.map(item => {
+            const subtotal = item.price * item.quantity;
+            total += subtotal;
+            return `
+                <div class="cart-item">
+                    <div>
+                        <div class="cart-item-name">${item.name}</div>
+                        <div class="text-muted">₱${item.price.toFixed(2)} x ${item.quantity} = ₱${subtotal.toFixed(2)}</div>
+                    </div>
+                    <div class="cart-item-qty">
+                        <button onclick="changeQty(${item.id}, -1)">-</button>
+                        <span>${item.quantity}</span>
+                        <button onclick="changeQty(${item.id}, 1)">+</button>
+                        <span class="remove-btn" onclick="removeFromCart(${item.id})">&times;</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        cartTotalEl.innerText = total.toFixed(2);
+        checkoutBtn.disabled = false;
+    }
+
+    checkoutBtn.addEventListener('click', () => {
+        checkoutBtn.disabled = true;
+        checkoutMessage.innerHTML = '';
+
+        const payload = {
+            cart: cart.map(item => ({ id: item.id, quantity: item.quantity }))
+        };
+
+        fetch('/sales/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('successModalText').innerText =
+                    'Transaction ID: ' + data.transaction_id;
+                document.getElementById('successModal').classList.add('open');
+                cart = [];
+                renderCart();
+                runSearch(posSearch.value.trim());
+            } else {
+                checkoutMessage.innerHTML = '<div class="flash flash-error">' + data.message + '</div>';
+                checkoutBtn.disabled = false;
+            }
+        })
+        .catch(() => {
+            checkoutMessage.innerHTML = '<div class="flash flash-error">Something went wrong. Please try again.</div>';
+            checkoutBtn.disabled = false;
+        });
+    });
+
+    function closeSuccessModal() {
+        document.getElementById('successModal').classList.remove('open');
+        window.location.href = '/transactions';
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} - MiniMart{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Product Details</h1>
+        <p>Full information for this product.</p>
+    </div>
+    <div class="action-links">
+        <a class="edit" href="{{ url_for('edit_product', id=product.id) }}">Edit</a>
+        <a class="view" href="{{ url_for('products') }}">Back to Products</a>
+    </div>
+</div>
+
+<div class="table-card">
+    <div class="details-grid">
+        <div>
+            {% if product.image_filename %}
+                <img class="product-thumb-large" src="{{ url_for('static', filename='uploads/' + product.image_filename) }}" alt="{{ product.name }}">
+            {% else %}
+                <div class="product-thumb-large"></div>
+            {% endif %}
+        </div>
+        <div>
+            <ul class="details-list">
+                <li><span>Product ID</span><span>{{ product.product_id }}</span></li>
+                <li><span>Product Name</span><span>{{ product.name }}</span></li>
+                <li><span>Category</span><span>{{ product.category }}</span></li>
+                <li><span>Price</span><span>₱{{ "%.2f"|format(product.price) }}</span></li>
+                <li><span>Current Stock</span><span>{{ product.stock }}</span></li>
+                <li><span>Low Stock Threshold</span><span>{{ product.low_stock_threshold }}</span></li>
+                <li>
+                    <span>Stock Status</span>
+                    <span>
+                        {% if product.stock == 0 %}
+                            <span class="badge badge-outofstock">Out of Stock</span>
+                        {% elif product.stock <= product.low_stock_threshold %}
+                            <span class="badge badge-lowstock">Low Stock</span>
+                        {% else %}
+                            <span class="badge badge-instock">In Stock</span>
+                        {% endif %}
+                    </span>
+                </li>
+                <li><span>Date Added</span><span>{{ product.created_at }}</span></li>
+                <li><span>Last Updated</span><span>{{ product.updated_at }}</span></li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

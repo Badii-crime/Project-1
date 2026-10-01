@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Inventory - MiniMart{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Inventory</h1>
+        <p>Track stock levels across all products.</p>
+    </div>
+</div>
+
+<div class="table-card">
+    {% if products %}
+    <table>
+        <thead>
+            <tr>
+                <th>Image</th>
+                <th>Product ID</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Current Stock</th>
+                <th>Low Stock Threshold</th>
+                <th>Inventory Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>
+                    {% if product.image_filename %}
+                        <img class="product-thumb" src="{{ url_for('static', filename='uploads/' + product.image_filename) }}" alt="{{ product.name }}">
+                    {% else %}
+                        <div class="product-thumb"></div>
+                    {% endif %}
+                </td>
+                <td>{{ product.product_id }}</td>
+                <td>{{ product.name }}</td>
+                <td>{{ product.category }}</td>
+                <td>{{ product.stock }}</td>
+                <td>{{ product.low_stock_threshold }}</td>
+                <td>
+                    {% if product.stock == 0 %}
+                        <span class="badge badge-outofstock">Out of Stock</span>
+                    {% elif product.stock <= product.low_stock_threshold %}
+                        <span class="badge badge-lowstock">Low Stock</span>
+                    {% else %}
+                        <span class="badge badge-instock">In Stock</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty-state">No products in inventory yet.</div>
+    {% endif %}
+</div>
+{% endblock %}

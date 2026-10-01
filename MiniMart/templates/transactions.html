@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Transactions - MiniMart{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Transaction History</h1>
+        <p>All completed sales transactions.</p>
+    </div>
+</div>
+
+<div class="table-card">
+    {% if transactions %}
+    <table>
+        <thead>
+            <tr>
+                <th>Transaction ID</th>
+                <th>Total Amount</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in transactions %}
+            <tr>
+                <td>{{ t.transaction_id }}</td>
+                <td>₱{{ "%.2f"|format(t.total_amount) }}</td>
+                <td>{{ t.transaction_date }}</td>
+                <td>
+                    <div class="action-links">
+                        <a class="view" href="{{ url_for('transaction_details', transaction_id=t.transaction_id) }}">View</a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="empty-state">No transactions yet.</div>
+    {% endif %}
+</div>
+{% endblock %}

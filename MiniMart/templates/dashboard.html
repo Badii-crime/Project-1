@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - MiniMart{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Dashboard</h1>
+        <p>Overview of your store's inventory and sales.</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="label">Total Products</div>
+        <div class="value">{{ stats.total_products }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Total Stock</div>
+        <div class="value">{{ stats.total_stock }}</div>
+    </div>
+    <div class="stat-card low-stock">
+        <div class="label">Low Stock</div>
+        <div class="value">{{ stats.low_stock }}</div>
+    </div>
+    <div class="stat-card sales">
+        <div class="label">Today's Sales</div>
+        <div class="value">₱{{ "%.2f"|format(stats.todays_sales) }}</div>
+    </div>
+</div>
+
+<div class="charts-grid">
+    <div class="chart-card">
+        <h3>Sales Overview (Last 7 Days)</h3>
+        <canvas id="salesChart" height="110"></canvas>
+    </div>
+    <div class="chart-card">
+        <h3>Products by Category</h3>
+        <canvas id="categoryChart" height="110"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!--
+    Chart.js is loaded from a local file first (static/js/chart.umd.min.js)
+    so the dashboard works fully offline. If that file hasn't been
+    downloaded yet, this automatically falls back to loading it from
+    the internet instead - see README.md for the one-time download step.
+    Either way, the charts themselves are only drawn once Chart.js has
+    actually finished loading, from whichever source succeeded.
+-->
+<script>
+    const salesLabels = {{ sales_data.labels | tojson }};
+    const salesValues = {{ sales_data.data | tojson }};
+    const categoryLabels = {{ category_data.labels | tojson }};
+    const categoryValues = {{ category_data.data | tojson }};
+
+    function initDashboardCharts() {
+        new Chart(document.getElementById('salesChart'), {
+            type: 'line',
+            data: {
+                labels: salesLabels,
+                datasets: [{
+                    label: 'Sales (₱)',
+                    data: salesValues,
+                    borderColor: '#2f8f5b',
+                    backgroundColor: 'rgba(47, 143, 91, 0.12)',
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        new Chart(document.getElementById('categoryChart'), {
+            type: 'bar',
+            data: {
+                labels: categoryLabels,
+                datasets: [{
+                    label: 'Products',
+                    data: categoryValues,
+                    backgroundColor: '#4a7fe0'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+    }
+
+    function loadChartFromCDN() {
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js';
+        s.onload = initDashboardCharts;
+        s.onerror = function () {
+            console.error('Could not load Chart.js from the local file or the internet. The dashboard graphs will stay empty until one of those works.');
+        };
+        document.head.appendChild(s);
+    }
+</script>
+<script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"
+        onload="initDashboardCharts()"
+        onerror="loadChartFromCDN()"></script>
+{% endblock %}

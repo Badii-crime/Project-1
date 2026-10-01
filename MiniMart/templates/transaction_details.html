@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Transaction {{ transaction.transaction_id }} - MiniMart{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Transaction Details</h1>
+        <p>{{ transaction.transaction_id }}</p>
+    </div>
+    <a href="{{ url_for('transactions') }}" class="btn btn-secondary">Back to Transactions</a>
+</div>
+
+<div class="table-card">
+    <ul class="details-list" style="margin-bottom: 20px;">
+        <li><span>Transaction ID</span><span>{{ transaction.transaction_id }}</span></li>
+        <li><span>Date</span><span>{{ transaction.transaction_date }}</span></li>
+    </ul>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.product_name }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>₱{{ "%.2f"|format(item.price) }}</td>
+                <td>₱{{ "%.2f"|format(item.subtotal) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="cart-total" style="max-width: 300px; margin-left: auto;">
+        <span>TOTAL</span>
+        <span>₱{{ "%.2f"|format(transaction.total_amount) }}</span>
+    </div>
+</div>
+{% endblock %}
